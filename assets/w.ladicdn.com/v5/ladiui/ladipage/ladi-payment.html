@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>LadiPage Builder</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Expires" content="-1">
+    <meta name="author" content="LadiPage Team" />
+    <link rel="stylesheet" type="text/css"
+          href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap">
+    <link rel="stylesheet" type="text/css" href="https://w.ladicdn.com/v5/source/builder/css/ladi-payment.min.css?v=1781767222147">
+
+</head>
+
+<body>
+<script type="text/javascript">
+    var selectedRadioPaymentMethod = null;
+    var selectedRaioItemPaymentMethod = null;
+    var selectedBankValue = null;
+    var method_name = null;
+    var method_title = null;
+
+    if (window.current_select && window.current_select.code == 'COD') {
+        window.payment_continue({ code: 'COD', method_name: 'Thanh toán khi giao hàng (COD)' });
+        window.isDone = true;
+    }
+
+    if (window.current_select && window.current_select.code == 'MOMO') {
+        window.payment_continue({ code: 'MOMO', method_name: 'Thanh toán qua ví MOMO' });
+        window.isDone = true;
+    }
+
+    if (window.current_select && window.current_select.code == 'BANK') {
+        window.payment_continue({ code: 'BANK', method_name: 'Chuyển khoản qua ngân hàng' });
+        window.isDone = true;
+    }
+
+    if (window.current_select && window.current_select.code == 'SHOPEE_PAY') {
+        window.payment_continue({ code: 'SHOPEE_PAY', method_name: 'Thanh toán qua ShopeePay', shopee_pay: { is_mobile_web: true } });
+        window.isDone = true;
+    }
+
+    if (window.current_select && window.current_select.code == 'PAYPAL') {
+        window.payment_continue({ code: 'PAYPAL', method_name: 'Thanh toán qua PayPal' });
+        window.isDone = true;
+    }
+
+    if (window.current_select && window.current_select.code == 'STRIPE') {
+        window.payment_continue({ code: 'STRIPE', method_name: 'Thanh toán qua Stripe' });
+        window.isDone = true;
+    }
+
+    if (!window.isDone) {
+        document.body.classList.add('show');
+    }
+
+    if (window.isFirstClickMethodPayment) {
+        document.body.classList.remove('show');
+    }
+
+    var listPaymentMethod = null;
+    var listInstallmentAlePayMethod = null;
+    var vnPayMethod = null;
+    var appotaPayMethod = null;
+    var alePayMethod = null;
+    var vnptEpayMethod = null;
+
+    // for trả góp ale pay
+    var selectedBankInstallmentAlePay = null;
+    var selectedPaymentMethod = null;
+    var selectedPeriod = null;
+
+    const params = {
+        "ladi_uid": window.ladi_uid,
+        "show_all": true,
+        "is_ladipage": true,
+        "lang": "vi"
+    };
+
+    const urlApi = window.end_point_api;
+    document.addEventListener('DOMContentLoaded', () => {
+        const loading = document.getElementById('loading');
+        loading.style.display = 'flex';
+        fetch(urlApi, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(params)
+        })
+            .then(response => response.json())
+            .then(data => {
+                listPaymentMethod = data.data;
+                const bankListVnPay = document.getElementById('bankListVnPay');
+                const bankListAppotaPay = document.getElementById('bankListAppotaPay');
+                const bankListAlePay = document.getElementById('bankListAlePay');
+                const bankListVnptEpay = document.getElementById('bankListVNPTEPay');
+
+                vnPayMethod = listPaymentMethod.find(method => method.code == 'VN_PAY');
+                appotaPayMethod = listPaymentMethod.find(method => method.code == 'APPOTA');
+                alePayMethod = listPaymentMethod.find(method => method.code == 'ALE_PAY');
+                vnptEpayMethod = listPaymentMethod.find(method => method.code == 'VNPT_EPAY');
+
+                if (bankListVnPay) {
+                    bankListVnPay.innerHTML = '';
+                }
+                if (bankListAppotaPay) {
+                    bankListAppotaPay.innerHTML = '';
+                }
+                if (bankListAlePay) {
+                    bankListAlePay.innerHTML = '';
+                }
+                if (bankListVnptEpay) {
+                    bankListVnptEpay.innerHTML = '';
+                }
+
+                // Render banks for VN_PAY
+                if (bankListVnPay && vnPayMethod && vnPayMethod.banks) {
+                    vnPayMethod.banks.forEach((bank, index) => {
+                        const li = document.createElement('li');
+                        li.setAttribute('href', '#');
+                        li.classList.add(`ladiui-checkout-bank-${(index % 4) + 1}`);
+                        li.setAttribute('data-value', bank.bank_code);
+
+                        li.innerHTML = `
+                            <img src="${bank.src}" alt="">
+                            <span>${bank.name}</span>
+                            `;
+                        bankListVnPay.appendChild(li);
+                    });
+                }
+
+                // Render banks for APPOTA
+                if (bankListAppotaPay && appotaPayMethod && appotaPayMethod.appota_atm) {
+                    appotaPayMethod.appota_atm.forEach((bank, index) => {
+                        const li = document.createElement('li');
+                        li.setAttribute('href', '#');
+                        li.classList.add(`ladiui-checkout-bank-${(index % 4) + 1}`);
+                        li.setAttribute('data-value', bank.bank_code);
+
+                        li.innerHTML = `
+                            <img src="${bank.src}" alt="">
+                            <span>${bank.name}</span>
+                            `;
+                        bankListAppotaPay.appendChild(li);
+                    });
+                }
+
+                // Render banks for ALE_PAY
+                if (bankListAlePay && alePayMethod && alePayMethod.banks) {
+                    alePayMethod.banks.forEach((bank, index) => {
+                        const li = document.createElement('li');
+                        li.setAttribute('href', '#');
+                        li.classList.add(`ladiui-checkout-bank-${(index % 4) + 1}`);
+                        li.setAttribute('data-value', bank.bank_code);
+
+                        li.innerHTML = `
+                            <img src="${bank.src}" alt="">
+                            <span>${bank.name}</span>
+                            `;
+                        bankListAlePay.appendChild(li);
+                    });
+                }
+
+                // Render banks for VNPT_EPAY
+                if (bankListVnptEpay && vnptEpayMethod && vnptEpayMethod.banks) {
+                    vnptEpayMethod.banks.forEach((bank, index) => {
+                        const li = document.createElement('li');
+                        li.setAttribute('href', '#');
+                        li.classList.add(`ladiui-checkout-bank-${(index % 4) + 1}`);
+                        li.setAttribute('data-value', bank.bank_code);
+
+                        li.innerHTML = `
+                            <img src="${bank.src}" alt="">
+                            <span>${bank.name}</span>
+                            `;
+                        bankListVnptEpay.appendChild(li);
+                    });
+                }
+
+                // Ẩn hiện các method bên trong theo config từ API của method VN_PAY
+                const paymentItemsMethodVNPay = document.querySelectorAll('.payment-method-item[data-method="VN_PAY"] .ladiui-checkout-payment-item');
+                paymentItemsMethodVNPay.forEach(item => {
+                    const attributeValue = item.getAttribute('data-attribute');
+
+                    if (vnPayMethod && vnPayMethod.config && vnPayMethod.config.active_payment_methods.includes(attributeValue)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+
+                // Ẩn hiện các method bên trong theo config từ API của method ALE_PAY
+                const paymentItemsMethodAlePay = document.querySelectorAll('.payment-method-item[data-method="ALE_PAY"] .ladiui-checkout-payment-item');
+                paymentItemsMethodAlePay.forEach(item => {
+                    const attributeValue = item.getAttribute('data-attribute');
+                    if (alePayMethod && alePayMethod.config && alePayMethod.config.active_payment_methods.includes(attributeValue)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+
+                // Ẩn hiện các method bên trong theo config từ API của method APPOTA
+                const paymentItemsMethodAPPOTA = document.querySelectorAll('.payment-method-item[data-method="APPOTA"] .ladiui-checkout-payment-item');
+                paymentItemsMethodAPPOTA.forEach(item => {
+                    const attributeValue = item.getAttribute('data-attribute');
+
+                    if (appotaPayMethod && appotaPayMethod.config && appotaPayMethod.config.active_payment_methods.includes(attributeValue)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+
+                // Ẩn hiện các method bên trong theo config từ API của method VNPTEPAY
+                const paymentItemsMethodVNPTEPAY = document.querySelectorAll('.payment-method-item[data-method="VNPT_EPAY"] .ladiui-checkout-payment-item');
+                paymentItemsMethodVNPTEPAY.forEach(item => {
+                    const attributeValue = item.getAttribute('data-attribute');
+
+                    if (vnptEpayMethod && vnptEpayMethod.config && vnptEpayMethod.config.active_payment_methods.includes(attributeValue)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+
+                // const paymentBodyDivs = document.querySelectorAll('.ladiui-checkout-payment-body-list-bank');
+                if (window.current_select && window.current_select.code) {
+                    const methodCode = window.current_select.code.toLowerCase();
+                    const selectedMethod = window.current_select[methodCode];
+
+                    if (selectedMethod && selectedMethod.type) {
+                        selectedRadioPaymentMethod = window.current_select.code || null;
+                        selectedRaioItemPaymentMethod = selectedMethod.type || null;
+                        selectedBankValue = selectedMethod.bank_code || null;
+                        checkedSetting();
+                    } else {
+                        selectedRadioPaymentMethod = window.current_select.code || null;
+                        selectedRaioItemPaymentMethod = null;
+                        selectedBankValue = null;
+                        autoCheckedMethodInit();
+                    }
+                }
+                if (window.isFirstClickMethodPayment) {
+                    const visibleItems = Array.from(document.querySelectorAll(".payment-method-item.select .ladiui-checkout-payment-item"))
+                        .filter(item => getComputedStyle(item).display === "block");
+                    if (visibleItems.length > 1) {
+                        window.payment_cancel();
+                    } else {
+                        const params = {
+                            method_name,
+                            method_title,
+                            code: selectedRadioPaymentMethod || '',
+                            [selectedRadioPaymentMethod.toLowerCase()]: {
+                                type: selectedRaioItemPaymentMethod || '',
+                                bank_code: selectedBankValue || ''
+                            }
+                        };
+                        window.payment_continue(params);
+                    }
+
+                }
+                loading.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loading.style.display = 'none';
+            });
+
+        // click bank cua VN_PAY theo api
+        const ulVnPay = document.getElementById('bankListVnPay');
+        if (ulVnPay) {
+            ulVnPay.addEventListener('click', function (event) {
+                const clickedLi = event.target.closest('li');
+                if (clickedLi) {
+                    ulVnPay.querySelectorAll('li').forEach(item => item.classList.remove('active'));
+
+                    clickedLi.classList.add('active');
+                    const activeLi = ulVnPay.querySelector('li.active');
+                    if (activeLi) {
+                        selectedBankValue = activeLi.getAttribute('data-value');
+                    } else {
+                        selectedBankValue = null;
+                        const firstLi = ulVnPay.querySelector('li');
+                        if (firstLi) {
+                            firstLi.classList.add('active');
+                        }
+                    }
+                }
+            });
+        }
+
+        // click bank cua Appota theo api
+        const ulAppotaPay = document.getElementById('bankListAppotaPay');
+        if (ulAppotaPay) {
+            ulAppotaPay.addEventListener('click', function (event) {
+                const clickedLi = event.target.closest('li');
+                if (clickedLi) {
+                    ulAppotaPay.querySelectorAll('li').forEach(item => item.classList.remove('active'));
+
+                    clickedLi.classList.add('active');
+
+                    const activeLi = ulAppotaPay.querySelector('li.active');
+                    if (activeLi) {
+                        selectedBankValue = activeLi.getAttribute('data-value');
+                    } else {
+                        selectedBankValue = null;
+                        const firstLi = ulAppotaPay.querySelector('li');
+                        if (firstLi) {
+                            firstLi.classList.add('active');
+                        }
+                    }
+                }
+            });
+        }
+
+        // click bank cua AlePay theo api
+        const ulAlePay = document.getElementById('bankListAlePay');
+        if (ulAlePay) {
+            ulAlePay.addEventListener('click', function (event) {
+                const clickedLi = event.target.closest('li');
+                if (clickedLi) {
+                    ulAlePay.querySelectorAll('li').forEach(item => item.classList.remove('active'));
+                    clickedLi.classList.add('active');
+                    const activeLi = ulAlePay.querySelector('li.active');
+                    if (activeLi) {
+                        selectedBankValue = activeLi.getAttribute('data-value');
+                    } else {
+                        selectedBankValue = null;
+                        const firstLi = ulAlePay.querySelector('li');
+
+                        if (firstLi) {
+                            firstLi.classList.add('active');
+                        }
+                    }
+                }
+            });
+        }
+
+        // click bank cua VNPTEpay theo api
+        const ulVNPTEPay = document.getElementById('bankListVNPTEPay');
+        if (ulVNPTEPay) {
+            ulVNPTEPay.addEventListener('click', function (event) {
+                const clickedLi = event.target.closest('li');
+                if (clickedLi) {
+                    ulVNPTEPay.querySelectorAll('li').forEach(item => item.classList.remove('active'));
+
+                    clickedLi.classList.add('active');
+
+                    const activeLi = ulVNPTEPay.querySelector('li.active');
+                    if (activeLi) {
+                        selectedBankValue = activeLi.getAttribute('data-value');
+                    } else {
+                        selectedBankValue = null;
+                        const firstLi = ulVNPTEPay.querySelector('li');
+                        if (firstLi) {
+                            firstLi.classList.add('active');
+                        }
+                    }
+                }
+            });
+        }
+
+    });
+
+    const urlApiAlePayInstallment = "https://api.checkout.ladisales.com/1.0/payment/get-ale-pay-installment";
+    document.addEventListener('DOMContentLoaded', () => {
+        const loading = document.getElementById('loading');
+        const installmentList = document.querySelector('.ladiui-checkout-list-payments.installment-ale-pay');
+
+        if (window.current_select.code !== "ALE_PAY") {
+            if (installmentList) {
+                installmentList.style.display = "none";
+            }
+            return;
+        }
+        const params = {
+            amount: window.objDataProduct.price,
+            store_id: window.objDataProduct.store_id_product
+        };
+
+        if (installmentList) {
+            installmentList.style.display = "none";
+        }
+
+        loading.style.display = 'flex';
+        fetch(urlApiAlePayInstallment, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(params)
+        })
+            .then(response => response.json())
+            .then(data => {
+                const installmentList = document.querySelector('.ladiui-checkout-list-payments.installment-ale-pay');
+                if (installmentList) {
+                    installmentList.style.display = "block";
+                }
+                listInstallmentAlePayMethod = data.data;
+                const installmentListAlePay = document.getElementById('installmentListAlePay');
+                const paymentMethodsContainer = document.querySelector('.block-payment-method-ale-pay-installment > div');
+                const installmentPeriodContainer = document.querySelector('.block-payment-mounth');
+                const installmentDetailsContainer = document.querySelector('.block-description-installment div');
+                const amountInvalid = document.querySelector('.amount-invalid');
+
+                if (!data.data.status) {
+                    amountInvalid.style.display = "flex";
+                    if (installmentList) {
+                        installmentList.style.display = "none";
+                    }
+                    return;
+                }
+
+                // Kiểm tra xem có dữ liệu đã chọn trước đó không
+                const hasPreviousSelection = window.current_select.ale_pay &&
+                    window.current_select.ale_pay.bank_code &&
+                    window.current_select.ale_pay.payment_method &&
+                    window.current_select.ale_pay.month;
+
+                // Render danh sách ngân hàng
+                if (listInstallmentAlePayMethod && listInstallmentAlePayMethod.list_bank) {
+                    installmentListAlePay.innerHTML = ''; // Xóa nội dung cũ trước khi render mới
+
+                    listInstallmentAlePayMethod.list_bank.forEach((bank, index) => {
+                        const li = document.createElement('li');
+                        li.setAttribute('href', '#');
+                        li.classList.add(`ladiui-checkout-bank-${(index % 4) + 1}`);
+                        li.setAttribute('data-value', bank.bankCode);
+
+                        li.innerHTML = `
+                    <img src="${bank.src}" alt="">
+                    <span>${bank.bankName}</span>
+                `;
+
+                        li.addEventListener('click', function () {
+                            installmentListAlePay.querySelectorAll('li').forEach(item => item.classList.remove('active'));
+                            li.classList.add('active');
+
+                            selectedBankValue = li.getAttribute('data-value');
+
+                            selectedBankInstallmentAlePay = listInstallmentAlePayMethod.list_bank.find(bank => bank.bankCode === selectedBankValue);
+
+                            if (selectedBankInstallmentAlePay) {
+                                renderPaymentMethods(selectedBankInstallmentAlePay.paymentMethods);
+                            }
+                        });
+
+                        installmentListAlePay.appendChild(li);
+                    });
+
+                    if (hasPreviousSelection) {
+                        // Auto chọn lại ngân hàng đã chọn trước đó
+                        const selectedBank = installmentListAlePay.querySelector(`li[data-value="${window.current_select.ale_pay.bank_code}"]`);
+                        if (selectedBank) {
+                            selectedBank.classList.add('active');
+                            selectedBankValue = selectedBank.getAttribute('data-value');
+                            selectedBankInstallmentAlePay = listInstallmentAlePayMethod.list_bank.find(bank => bank.bankCode === selectedBankValue);
+                            if (selectedBankInstallmentAlePay) {
+                                renderPaymentMethods(selectedBankInstallmentAlePay.paymentMethods);
+                            }
+                        }
+                    } else {
+                        // Auto chọn ngân hàng đầu tiên nếu không có dữ liệu trước đó
+                        const firstLi = installmentListAlePay.querySelector('li');
+                        if (firstLi) {
+                            firstLi.classList.add('active');
+                            selectedBankValue = firstLi.getAttribute('data-value');
+                            selectedBankInstallmentAlePay = listInstallmentAlePayMethod.list_bank.find(bank => bank.bankCode === selectedBankValue);
+                            if (selectedBankInstallmentAlePay) {
+                                renderPaymentMethods(selectedBankInstallmentAlePay.paymentMethods);
+                            }
+                        }
+                    }
+                }
+
+                // Hiển thị danh sách phương thức thanh toán
+                function renderPaymentMethods(paymentMethods) {
+                    paymentMethodsContainer.innerHTML = '';
+
+                    paymentMethods.forEach((method, index) => {
+                        const div = document.createElement('div');
+                        div.classList.add('payment-method-inst-item');
+                        div.textContent = method.paymentMethod;
+                        div.setAttribute('data-method', method.paymentMethod);
+
+                        div.addEventListener('click', () => {
+                            document.querySelectorAll('.payment-method-inst-item').forEach(item => item.classList.remove('active'));
+                            div.classList.add('active');
+
+                            selectedPaymentMethod = selectedBankInstallmentAlePay.paymentMethods.find(pm => pm.paymentMethod === method.paymentMethod);
+
+                            renderInstallmentPeriods(selectedPaymentMethod.periods);
+                        });
+
+                        paymentMethodsContainer.appendChild(div);
+                    });
+
+                    if (hasPreviousSelection) {
+                        // Auto chọn lại phương thức thanh toán trước đó
+                        const selectedMethod = paymentMethodsContainer.querySelector(`div[data-method="${window.current_select.ale_pay.payment_method}"]`);
+                        if (selectedMethod) {
+                            selectedMethod.classList.add('active');
+                            selectedPaymentMethod = selectedBankInstallmentAlePay.paymentMethods.find(pm => pm.paymentMethod === window.current_select.ale_pay.payment_method);
+                            if (selectedPaymentMethod) {
+                                renderInstallmentPeriods(selectedPaymentMethod.periods);
+                            }
+                        }
+                    } else {
+                        // Auto chọn phương thức đầu tiên nếu không có dữ liệu trước đó
+                        const firstMethod = paymentMethodsContainer.querySelector('.payment-method-inst-item');
+                        if (firstMethod) {
+                            firstMethod.classList.add('active');
+                            selectedPaymentMethod = paymentMethods[0];
+                            renderInstallmentPeriods(selectedPaymentMethod.periods);
+                        }
+                    }
+                }
+
+                // Hiển thị danh sách kỳ hạn trả góp
+                function renderInstallmentPeriods(periods) {
+                    installmentPeriodContainer.innerHTML = '';
+
+                    periods.forEach((period, index) => {
+                        const div = document.createElement('div');
+                        div.classList.add('item-mounth');
+                        div.textContent = `${period.month} tháng`;
+                        div.setAttribute('data-month', period.month);
+
+                        div.addEventListener('click', () => {
+                            document.querySelectorAll('.item-mounth').forEach(item => item.classList.remove('active'));
+                            div.classList.add('active');
+
+                            selectedPeriod = selectedPaymentMethod.periods.find(p => p.month === period.month);
+                            renderInstallmentDetails(selectedPeriod);
+                        });
+
+                        installmentPeriodContainer.appendChild(div);
+                    });
+
+                    if (hasPreviousSelection) {
+                        // Auto chọn lại kỳ hạn trả góp đã chọn trước đó
+                        const selectedMonth = installmentPeriodContainer.querySelector(`div[data-month="${window.current_select.ale_pay.month}"]`);
+                        if (selectedMonth) {
+                            selectedMonth.classList.add('active');
+                            selectedPeriod = selectedPaymentMethod.periods.find(p => p.month === window.current_select.ale_pay.month);
+                            if (selectedPeriod) {
+                                renderInstallmentDetails(selectedPeriod);
+                            }
+                        }
+                    } else {
+                        // Auto chọn kỳ hạn đầu tiên nếu không có dữ liệu trước đó
+                        const firstMonth = installmentPeriodContainer.querySelector('.item-mounth');
+                        if (firstMonth) {
+                            firstMonth.classList.add('active');
+                            selectedPeriod = periods[0];
+                            renderInstallmentDetails(selectedPeriod);
+                        }
+                    }
+                }
+
+                // Hiển thị chi tiết khoản trả góp
+                function renderInstallmentDetails(period) {
+                    installmentDetailsContainer.innerHTML = `
+                <div class="flex-center-between info-installment border-top-upsell mt-12">
+                    <span>Tổng tiền phải trả</span>
+                    <span>${period.amountFinal.toLocaleString()} VND</span>
+                </div>
+                <div class="flex-center-between info-installment border-top-upsell">
+                    <span>Số tiền phải trả mỗi tháng</span>
+                    <span>${period.amountByMonth.toLocaleString()} VND</span>
+                </div>
+                <div class="flex-center-between info-installment border-top-upsell">
+                    <span>Chênh lệch giá gốc</span>
+                    <span>${period.amountFee.toLocaleString()} VND</span>
+                </div>
+            `;
+                }
+
+                loading.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loading.style.display = 'none';
+            });
+    });
+
+    // function auto checked các method đã chọn trước đó
+    function checkedSetting() {
+        const paymentMethodInput = document.getElementById(window.current_select.code);
+        if (paymentMethodInput) {
+            paymentMethodInput.checked = true;
+        }
+
+        const methodCode = window.current_select.code.toLowerCase();
+        const methodConfig = window.current_select[methodCode];
+        const itemPaymentMethodInput = methodConfig && methodConfig.type ? document.getElementById(methodConfig.type) : null;
+
+        const selectedMethodDiv = document.querySelector(`div[data-method="${window.current_select.code}"]`);
+
+        if (selectedMethodDiv) {
+            selectedMethodDiv.classList.add('select');
+
+            // Hiển thị payment-method-detail và payment-guide
+            const paymentMethodDetailDiv = selectedMethodDiv.querySelector('.payment-method-detail');
+            if (paymentMethodDetailDiv) {
+                paymentMethodDetailDiv.style.display = 'block';
+            }
+
+            const paymentGuide = selectedMethodDiv.querySelector('.payment-guide');
+            if (paymentGuide) {
+                paymentGuide.style.display = 'block';
+            }
+
+            if (window.current_select.code == "ALE_PAY" && methodConfig && methodConfig.type == "ATM") {
+                const paymentItemDivAlePay = document.querySelector('.ladiui-checkout-payment-item.ale_pay_atm');
+
+                if (paymentItemDivAlePay) {
+                    paymentItemDivAlePay.classList.add('selected');
+                    const inputAtmAlePay = paymentItemDivAlePay.querySelector('input.ale_pay_atm');
+
+                    if (inputAtmAlePay) {
+                        inputAtmAlePay.style.display = 'block';
+                        setTimeout(() => inputAtmAlePay.click(), 10);
+                    }
+
+                    const paymentBodyList = paymentItemDivAlePay.querySelector('.ladiui-checkout-payment-body-list-bank');
+                    if (paymentBodyList) {
+                        paymentBodyList.style.display = 'block';
+
+                        const activeBankLi = paymentBodyList.querySelector(`li[data-value="${selectedBankValue}"]`);
+                        if (activeBankLi) {
+                            activeBankLi.classList.add('active');
+                        }
+                    }
+
+                }
+
+            }
+
+            if (window.current_select.code == "ALE_PAY" && methodConfig && methodConfig.type == "VA") {
+                const paymentItemDivALePay = document.querySelector('.ladiui-checkout-payment-item.ale_pay_va');
+                if (paymentItemDivALePay) {
+                    const inputVA_ALEPAY = paymentItemDivALePay.querySelector('input.ale_pay_va');
+                    paymentItemDivALePay.classList.add('selected');
+
+                    if (inputVA_ALEPAY) {
+                        inputVA_ALEPAY.style.display = 'block';
+                        setTimeout(() => inputVA_ALEPAY.click(), 10);
+                    }
+
+                }
+            }
+            if (window.current_select.code == "VNPT_EPAY" && methodConfig && methodConfig.type == "VA") {
+                const paymentItemDivVnptEpay = document.querySelector('.ladiui-checkout-payment-item.vnpt_epay');
+
+                if (paymentItemDivVnptEpay) {
+                    const inputVA_VNPTEPAY = paymentItemDivVnptEpay.querySelector('input#VA');
+
+                    inputVA_VNPTEPAY.checked = true;
+                    paymentItemDivVnptEpay.classList.add('selected');
+
+                    const paymentBodyList = paymentItemDivVnptEpay.querySelector('.ladiui-checkout-payment-body-list-bank');
+                    if (paymentBodyList) {
+                        paymentBodyList.style.display = 'block';
+
+                        const activeBankLi = paymentBodyList.querySelector(`li[data-value="${selectedBankValue}"]`);
+                        if (activeBankLi) {
+                            activeBankLi.classList.add('active');
+                        }
+                    }
+                }
+            } else if (itemPaymentMethodInput) {
+
+                itemPaymentMethodInput.checked = true;
+                const paymentItemDiv = itemPaymentMethodInput.closest('.ladiui-checkout-payment-item');
+
+                if (paymentItemDiv) {
+                    paymentItemDiv.classList.add('selected');
+
+                    const paymentBodyList = paymentItemDiv.querySelector('.ladiui-checkout-payment-body-list-bank');
+                    if (paymentBodyList) {
+                        paymentBodyList.style.display = 'block';
+
+                        const activeBankLi = paymentBodyList.querySelector(`li[data-value="${selectedBankValue}"]`);
+                        if (activeBankLi) {
+                            activeBankLi.classList.add('active');
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+
+    // function khi click method payment ở ngoài builder
+    function autoCheckedMethodInit() {
+        let firstVisiblePaymentItem = null;
+        const selectedMethodDiv = document.querySelector(`div[data-method="${window.current_select.code}"]`);
+        if (selectedMethodDiv) {
+            selectedMethodDiv.classList.add('select');
+
+            const methodDetailSelector = `.payment-method-detail[data-method-detail="${window.current_select.code}"]`;
+            const paymentMethodDetailDivs = document.querySelectorAll(methodDetailSelector);
+            paymentMethodDetailDivs.forEach(methodDetailDiv => {
+                if (methodDetailDiv) {
+                    methodDetailDiv.style.display = 'block';
+
+                    const paymentItems = getPaymentItems();
+                    for (const item of paymentItems) {
+                        if (window.getComputedStyle(item).display === 'block') {
+                            firstVisiblePaymentItem = item;
+                            break;
+                        }
+                    }
+                }
+            });
+
+            if (firstVisiblePaymentItem) {
+                firstVisiblePaymentItem.classList.add('selected');
+
+                const input = firstVisiblePaymentItem.querySelector('input[type="radio"]');
+
+                if (input) {
+                    input.checked = true;
+                }
+
+                const label = firstVisiblePaymentItem.querySelector('label');
+                if (label) {
+                    method_title = label.textContent.trim();
+                }
+
+                const paymentBodyList = firstVisiblePaymentItem.querySelector('.ladiui-checkout-payment-body-list-bank');
+                if (paymentBodyList) {
+                    paymentBodyList.style.display = 'block';
+
+                    const firstLi = paymentBodyList.querySelector('li');
+                    if (firstLi) {
+                        firstLi.classList.add('active');
+                    }
+                    const activeLi = paymentBodyList.querySelector('li.active');
+                    if (activeLi) {
+                        selectedBankValue = activeLi.getAttribute('data-value');
+                    } else {
+                        selectedBankValue = null;
+                    }
+                }
+
+                selectedRaioItemPaymentMethod = getSelectedRadioValue('input[name="item-payment-method-radio"]:checked');
+            }
+
+            // Hiển thị hướng dẫn thanh toán
+            const paymentGuide = selectedMethodDiv.querySelector('.payment-guide');
+            if (paymentGuide) {
+                paymentGuide.style.display = 'block';
+            }
+        }
+    }
+
+    function getPaymentItems() {
+        const methodDetailDiv = document.querySelector(`.payment-method-detail[data-method-detail="${window.current_select.code}"]`);
+        if (methodDetailDiv) {
+            const paymentItems = methodDetailDiv.querySelectorAll('.ladiui-checkout-payment-item');
+            return paymentItems;
+        } else {
+            return [];
+        }
+    }
+
+    function getSelectedRadioValue(idRadioInput) {
+        const selectedRadio = document.querySelector(idRadioInput);
+        if (selectedRadio) {
+            return selectedRadio.value;
+        }
+        return null;
+    }
+
+    function getSelectedLiValue() {
+        const selectedLi = document.querySelector('.ladiui-checkout-payment-body-list-bank li.active');
+        if (selectedLi) {
+            return selectedLi.getAttribute('data-value');
+        }
+        return null;
+    }
+
+</script>
+
+<div class="ladipage-payment">
+    <div class="ladipage-payment-box">
+        <div class="builder-modal-header">
+            <div class="builder-title-description">
+                <div class="flex-center-between head cursor-pointer">
+                    <div class="flex-center" data-head="VN_PAY">
+                        <img src="https://w.ladicdn.com/ladiui/ladisales/logo-vnpay.svg" alt="VNPAY">
+                        <div class="flex header-method">
+                            <span>Thanh toán qua VnPay</span>
+                            <p>Lựa chọn phương thức mà bạn đang có</p>
+                        </div>
+                    </div>
+
+                    <div class="flex-center" data-head="APPOTA">
+                        <img src="https://docs.appotapay.com/img/icon.png" alt="APPOTA">
+                        <div class="flex header-method">
+                            <span>Thanh toán qua AppotaPay</span>
+                            <p>Lựa chọn phương thức mà bạn đang có</p>
+                        </div>
+                    </div>
+
+                    <div class="flex-center" data-head="VNPT_EPAY">
+                        <img src="https://w.ladicdn.com/ladiui/ladisales/icons/vnpt-epay.png" alt="VNPT_EPAY">
+                        <div class="flex header-method">
+                            <span>Thanh toán qua VNPT EPay</span>
+                            <p>Lựa chọn phương thức mà bạn đang có</p>
+                        </div>
+                    </div>
+
+                    <div class="flex-center" data-head="ALE_PAY">
+                        <img src="https://w.ladicdn.com/ladiui/ladisales/icons/vnpt-epay.png" alt="ALE_PAY">
+                        <div class="flex header-method">
+                            <span>Thanh toán qua AlePay</span>
+                            <p>Lựa chọn phương thức mà bạn đang có</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--            <i class="ladiui icon close ldicon-circle-close-fill"></i>-->
+        </div>
+        <div id="loading" class="payment-loading" style="display: none;">
+            <img src="https://w.ladicdn.com/ladiui/icons/ldicon-loading-autosave.svg" alt="loading" />
+        </div>
+        <div class="builder-modal-content">
+            <div class="ladipage-payment-form ladiui form-group customer-tab">
+
+                <!-- ZALO PAY -->
+                <!-- <div class="payment-method-item" data-method="ZALO_PAY">
+                        <div class="flex-center-between head cursor-pointer">
+                            <div class="flex-center"><img src="https://w.ladicdn.com/ladiui/ladisales/icons/icon-zalo-pay.svg" alt=""
+                                                          width="24" height="24">
+                                <div class="ml-16"><span>Thanh toán qua ZaloPay</span></div>
+                            </div>
+                            <div><input type="radio" id="ZALO_PAY" class="ladiui form-check-input m-0 " name="radio-payment-method"></div>
+                        </div>
+                        <div class="payment-method-detail" style="display: none;">
+                            <div class="ladiui-checkout-payment-item ">
+                                <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span
+                                        class="flex items-center">
+                                        <div class="flex items-center">
+                                            <input type="radio" id="payment-zalopay-zalopayapp" name="item-payment-method-radio" class="ladiui form-check-input m-0 ">
+                                        </div>
+                                        <label class="ml-8" for="payment-zalopay-zalopayapp">Sử dụng số dư trong ví ZaloPay
+                                            <div class="payment-method-note">Test</div>
+                                        </label>
+                                    </span></div>
+                            </div>
+                            <div class="ladiui-checkout-payment-item border-top">
+                                <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span
+                                        class="flex items-center">
+                                        <div class="items-center"><input type="radio" id="payment-zalopay-cc" name="item-payment-method-radio" class="ladiui form-check-input m-0 "></div><label
+                                        class="ml-8" for="payment-zalopay-cc">Thanh toán bằng thẻ Visa / Master Card</label>
+                                    </span>
+                                </div>
+                                <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                    <div class="ladiui-checkout-list-payments">
+                                        <ul>
+                                            <li href="#" class="ladiui-checkout-bank-1" data-value="visa"><img
+                                                    src="https://w.ladicdn.com/ladisales/banks/bank-visa.svg"
+                                                    alt=""><span>Visa</span></li>
+                                            <li href="#" class="ladiui-checkout-bank-2" data-value="MASTERCARD"><img
+                                                    src="https://w.ladicdn.com/ladisales/banks/bank-mastercard.svg"
+                                                    alt=""><span>Master Card</span></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ladiui-checkout-payment-item border-top">
+                                <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span
+                                        class="flex items-center">
+                                        <div class="flex items-center"><input type="radio" id="payment-zalopay-bank_code" name="item-payment-method-radio" class="ladiui form-check-input m-0 "></div>
+                                        <label class="ml-8" for="payment-zalopay-bank_code"> Thanh toán bằng mã thẻ ATM</label>
+                                    </span></div>
+                                <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                    <div class="ladiui-checkout-list-payments">
+                                        <ul id="bankListZaloPay"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div> -->
+
+                <!-- VN PAY -->
+                <div class="payment-method-item" data-method="VN_PAY">
+                    <div class="payment-method-detail" data-method-detail="VN_PAY" style="display: none;">
+                        <div class="ladiui-checkout-payment-item" data-attribute="VNPAYQR" style="display: none;">
+                            <div
+                                    class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer">
+                                    <span class="flex items-center">
+                                        <div class="flex items-center">
+                                            <input type="radio" id="VNPAYQR" value="VNPAYQR" name="item-payment-method-radio"
+                                                   class="ladiui form-check-input m-0">
+                                        </div>
+                                        <label class="ml-8" for="VNPAYQR">Sử dụng mã QR Code</label>
+                                    </span>
+                            </div>
+                        </div>
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="bank_code" style="display: none;">
+                            <div
+                                    class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer">
+                                    <span class="flex items-center">
+                                        <div class="flex items-center">
+                                            <input type="radio" id="bank_code" value="bank_code" name="item-payment-method-radio"
+                                                   class="ladiui form-check-input m-0 ">
+                                        </div>
+                                        <label class="ml-8" for="bank_code"> Thanh toán bằng mã thẻ ATM</label>
+                                    </span>
+                            </div>
+                            <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                <div class="ladiui-checkout-list-payments">
+                                    <ul id="bankListVnPay"></ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="INTCARD" style="display: none;">
+                            <div
+                                    class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer">
+                                    <span class="flex items-center">
+                                        <div class="flex items-center"><input type="radio" id="INTCARD" value="INTCARD"
+                                                                              name="item-payment-method-radio" class="ladiui form-check-input m-0 ">
+                                        </div>
+                                        <label class="ml-8" for="INTCARD">Thanh toán bằng thẻ Visa / Master Card</label>
+                                    </span>
+                            </div>
+                            <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                <div class="ladiui-checkout-list-payments">
+                                    <ul>
+                                        <li href="#" class="ladiui-checkout-bank-1" data-value="VISA"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-visa.svg"
+                                                alt=""><span>Visa</span></li>
+                                        <li href="#" class="ladiui-checkout-bank-2" data-value="MASTERCARD"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-mastercard.svg"
+                                                alt=""><span>Master Card</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- APPOTA -->
+                <div class="payment-method-item" data-method="APPOTA">
+                    <div class="payment-method-detail" data-method-detail="APPOTA" style="display: none;">
+
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="QRCODE" style="display: none;">
+                            <div
+                                    class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer">
+                                    <span class="flex items-center">
+                                        <div class="flex items-center">
+                                            <input type="radio" id="QRCODE" value="QRCODE" name="item-payment-method-radio"
+                                                   class="ladiui form-check-input m-0 ">
+                                        </div>
+                                        <label class="ml-8" for="QRCODE">Thanh toán qua QR Code động</label>
+                                    </span>
+                            </div>
+                        </div>
+
+                        <div class="ladiui-checkout-payment-item" data-attribute="ATM" style="display: none;">
+                            <div
+                                    class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer">
+                                    <span class="flex items-center">
+                                        <div class="flex items-center">
+                                            <input type="radio" id="ATM" value="ATM" name="item-payment-method-radio"
+                                                   class="ladiui form-check-input m-0 ">
+                                        </div>
+                                        <label class="ml-8" for="ATM">Thanh toán qua iBanking/thẻ ATM</label>
+                                    </span>
+                            </div>
+                            <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                <div class="ladiui-checkout-list-payments">
+                                    <ul id="bankListAppotaPay"></ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="CC" style="display: none;">
+                            <div
+                                    class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer">
+                                    <span class="flex items-center">
+                                        <div class="flex items-center">
+                                            <input type="radio" id="CC" value="CC" name="item-payment-method-radio"
+                                                   class="ladiui form-check-input m-0 ">
+                                        </div>
+                                        <label class="ml-8" for="CC">Thanh toán qua thẻ Visa/Master Card</label>
+                                    </span>
+                            </div>
+                            <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                <div class="ladiui-checkout-list-payments">
+                                    <ul>
+                                        <li href="#" class="ladiui-checkout-bank-1" data-value="VISA"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-visa.svg"
+                                                alt=""><span>Visa</span></li>
+                                        <li href="#" class="ladiui-checkout-bank-2" data-value="MASTERCARD"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-mastercard.svg"
+                                                alt=""><span>Master Card</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="EWALLET" style="display: none;">
+                            <div
+                                    class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer">
+                                    <span class="flex items-center">
+                                        <div class="flex items-center">
+                                            <input type="radio" id="EWALLET" value="EWALLET" name="item-payment-method-radio"
+                                                   class="ladiui form-check-input m-0 ">
+                                        </div>
+                                        <label class="ml-8" for="EWALLET">Thanh toán qua ví điện tử</label>
+                                    </span>
+                            </div>
+                            <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                <div class="ladiui-checkout-list-payments">
+                                    <ul>
+                                        <li href="#" class="ladiui-checkout-bank-1" data-value="APPOTA"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-appota-wallet.svg"
+                                                alt=""><span>Ví Appota</span>
+                                        </li>
+                                        <li href="#" class="ladiui-checkout-bank-2" data-value="MOMO"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-momo-wallet.svg"
+                                                alt=""><span>Ví Momo</span>
+                                        </li>
+                                        <li href="#" class="ladiui-checkout-bank-3" data-value="SHOPEEPAY">
+                                            <img src="https://w.ladicdn.com/ladisales/banks/bank-shopee-wallet.svg"
+                                                 alt="">
+                                            <span>Ví ShopeePay</span>
+                                        </li>
+                                        <li href="#" class="ladiui-checkout-bank-4" data-value="VNPTPAY"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-vnpt-wallet.svg"
+                                                alt=""><span>Ví VNPT Pay</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="VA" style="display: none;">
+                            <div
+                                    class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer">
+                                    <span class="flex items-center">
+                                        <div class="flex items-center">
+                                            <input type="radio" id="VA" value="VA" name="item-payment-method-radio"
+                                                   class="ladiui form-check-input m-0 ">
+                                        </div>
+                                        <label class="ml-8" for="VA">Chuyển khoản qua ngân hàng (tự động xác nhận
+                                            đơn)</label>
+                                    </span>
+                            </div>
+                            <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                <div class="ladiui-checkout-list-payments">
+                                    <ul>
+                                        <li href="#" class="ladiui-checkout-bank-1" data-value="MARITIMEBANK"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-msb.svg"
+                                                alt=""><span>MARITIMEBANK</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="MM" style="display: none;">
+                            <div
+                                    class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer">
+                                    <span class="flex items-center">
+                                        <div class="flex items-center"><input type="radio" id="MM" value="MM"
+                                                                              name="item-payment-method-radio" class="ladiui form-check-input m-0 ">
+                                        </div><label class="ml-8" for="MM">Mobile Money</label>
+                                    </span></div>
+                            <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                <div class="ladiui-checkout-list-payments">
+                                    <ul>
+                                        <li href="#" class="ladiui-checkout-bank-1" data-value="VINAPHONE">
+                                            <img src="https://w.ladicdn.com/ladisales/banks/bank-vinaphone.svg"
+                                                 alt="">
+                                            <span>Nhà mạng Vinaphone</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ALE PAY -->
+                <div class="payment-method-item" data-method="ALE_PAY">
+                    <div class="payment-method-detail" data-method-detail="ALE_PAY" style="display: none;">
+                        <div class="ladiui-checkout-payment-item ale_pay_va border-top" data-attribute="VA" style="display: none;">
+                            <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span class="flex items-center">
+                                        <!--  vì params gửi lên api của 1 số method trùng VA -->
+                                            <div class="flex items-center"><input type="radio" id="VA2" value="VA" name="item-payment-method-radio" class="ladiui form-check-input ale_pay_va m-0 "></div><label
+                                    class="ml-8" for="VA">Thanh toán quét mã VietQr (QRcode Napas247) | chuyển khoản 24/7</label>
+                                        </span></div>
+                        </div>
+                        <div class="ladiui-checkout-payment-item" data-attribute="VIET_QR" style="display: none;">
+                            <div
+                                    class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer">
+                                    <span class="flex items-center">
+                                        <div class="flex items-center">
+                                            <input type="radio" id="VIET_QR" value="VIET_QR" name="item-payment-method-radio"
+                                                   class="ladiui form-check-input m-0">
+                                        </div>
+                                        <label class="ml-8" for="VIET_QR">Sử dụng VietQR</label>
+                                    </span>
+                            </div>
+                        </div>
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="VISA" style="display: none;">
+                            <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span class="flex items-center">
+                                            <div class="flex items-center"><input type="radio" id="VISA" value="VISA" class="ladiui form-check-input m-0"
+                                                                                  name="item-payment-method-radio"></div><label class="ml-8" for="VISA">Thanh
+                                                toán bằng thẻ Visa / Master Card</label>
+                                        </span>
+                            </div>
+                            <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                <div class="ladiui-checkout-list-payments">
+                                    <ul>
+                                        <li href="#" class="ladiui-checkout-bank-1" data-value="VISA"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-visa.svg"
+                                                alt=""><span>Visa</span></li>
+                                        <li href="#" class="ladiui-checkout-bank-2" data-value="MASTERCARD"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-mastercard.svg"
+                                                alt=""><span>Master Card</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ladiui-checkout-payment-item ale_pay_atm" data-attribute="ATM" style="display: none;">
+                            <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span class="flex items-center">
+                                            <div class="flex items-center"><input type="radio" id="ATM2" value="ATM" class="ladiui form-check-input ale_pay_atm m-0"
+                                                                                  name="item-payment-method-radio"></div><label class="ml-8" for="ATM"> Thanh toán
+                                                bằng mã thẻ ATM</label>
+                                        </span></div>
+                            <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                <div class="ladiui-checkout-list-payments">
+                                    <ul id="bankListAlePay"></ul>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="INSTALLMENT" style="display: none;">
+                            <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer">
+                                <span class="flex items-center">
+                                    <div class="flex items-center">
+                                        <input type="radio" id="INSTALLMENT" value="INSTALLMENT" class="ladiui form-check-input m-0"
+                                               name="item-payment-method-radio">
+                                    </div>
+                                    <label class="ml-8" for="INSTALLMENT">Thanh toán trả góp</label>
+                                </span>
+                            </div>
+
+                            <div class="ladiui-checkout-payment-body-list-bank" style="display: none">
+                                <div class="ladiui-checkout-list-payments installment-ale-pay">
+                                    <ul id="installmentListAlePay"></ul>
+                                    <div class="block-payment-method-ale-pay-installment">
+                                        <p class="mb-8">Chọn hình thức thanh toán</p>
+                                        <div class="payment-method-installment"></div>
+                                    </div>
+                                    <div class="installment-circle">
+                                        <p class="mb-8">Chọn kỳ hạn trả góp</p>
+                                        <div class="block-payment-mounth"></div>
+                                    </div>
+
+                                    <div class="block-description-installment">
+                                        <div></div>
+                                    </div>
+                                </div>
+                                <span class="amount-invalid" style="display: none">Số tiền trả góp không hợp lệ</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VNPT EPAY -->
+                <div class="payment-method-item" data-method="VNPT_EPAY">
+                    <div class="payment-method-detail" data-method-detail="VNPT_EPAY" style="display: none;">
+                        <div class="ladiui-checkout-payment-item " data-attribute="ZALO" style="display: none;">
+                            <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span class="flex items-center">
+                                            <div class="flex items-center"><input type="radio" id="ZALO" value="ZALO" name="item-payment-method-radio" class="ladiui form-check-input m-0">
+                                            </div><label class="ml-8" for="ZALO">Thanh toán qua ví ZaloPay</label>
+                                        </span></div>
+                        </div>
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="MOMO" style="display: none;">
+                            <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span class="flex items-center">
+                                            <div class="flex items-center"><input type="radio" id="MOMO" value="MOMO" name="item-payment-method-radio" class="ladiui form-check-input m-0 "></div><label
+                                    class="ml-8" for="MOMO">Thanh toán qua ví Momo</label>
+                                        </span></div>
+                        </div>
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="MOCA" style="display: none;">
+                            <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span class="flex items-center">
+                                            <div class="flex items-center"><input type="radio" id="MOCA" value="MOCA" name="item-payment-method-radio" class="ladiui form-check-input m-0 "></div><label
+                                    class="ml-8" for="MOCA">Thanh toán qua ví Moca/ Grab Pay</label>
+                                        </span></div>
+                        </div>
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="DC" style="display: none;">
+                            <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span class="flex items-center">
+                                            <div class="flex items-center"><input type="radio" id="DC" value="DC" name="item-payment-method-radio" class="ladiui form-check-input m-0 "></div><label
+                                    class="ml-8" for="DC"> Thanh toán thẻ ATM/ Internet Banking</label>
+                                        </span></div>
+                            <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                <div class="ladiui-checkout-list-payments">
+                                    <ul id="bankListVNPTEPay"></ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="IC" style="display: none;">
+                            <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span class="flex items-center">
+                                            <div class="flex items-center"><input type="radio" id="IC" value="IC" name="item-payment-method-radio" class="ladiui form-check-input m-0 "></div><label
+                                    class="ml-8" for="IC">Thanh toán thẻ Visa/ Master Card/ JCB</label>
+                                        </span>
+                            </div>
+                            <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                <div class="ladiui-checkout-list-payments">
+                                    <ul>
+                                        <li href="#" class="ladiui-checkout-bank-1" data-value="VISA"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-visa.svg"
+                                                alt=""><span>Visa</span></li>
+                                        <li href="#" class="ladiui-checkout-bank-2" data-value="MASTERCARD"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-mastercard.svg"
+                                                alt=""><span>Master Card</span></li>
+                                        <li href="#" class="ladiui-checkout-bank-2" data-value="JCB"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-jcb.svg"
+                                                alt=""><span>JCB</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ladiui-checkout-payment-item vnpt_epay border-top" data-attribute="VA" style="display: none;">
+                            <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span class="flex items-center">
+                                            <div class="flex items-center"><input type="radio" id="VA" value="VA" name="item-payment-method-radio" class="ladiui form-check-input vnpt_epay m-0 "></div><label
+                                    class="ml-8" for="VA">Chuyển khoản ngân hàng (kích hoạt ngay lập tức)</label>
+                                        </span></div>
+                            <div class="ladiui-checkout-payment-body-list-bank" style="display: none;">
+                                <div class="ladiui-checkout-list-payments">
+                                    <ul>
+                                        <li href="#" class="ladiui-checkout-bank-1" data-value="WRIM"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-woori.svg" alt=""><span>Woori Việt
+                                                        Nam</span></li>
+                                        <li href="#" class="ladiui-checkout-bank-2" data-value="BIDV"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-bidv.svg" alt=""><span>BIDV</span></li>
+                                        <li href="#" class="ladiui-checkout-bank-3" data-value="SHBM"><img
+                                                src="https://w.ladicdn.com/ladisales/banks/bank-shinhan.svg" alt=""><span>Shinhan Bank
+                                                    </span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="SHPP" style="display: none;">
+                            <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span class="flex items-center">
+                                            <div class="flex items-center"><input type="radio" id="SHPP" value="SHPP" name="item-payment-method-radio" class="ladiui form-check-input m-0 "></div><label
+                                    class="ml-8" for="SHPP">Thanh toán qua ví ShopeePay</label>
+                                        </span></div>
+                        </div>
+                        <div class="ladiui-checkout-payment-item border-top" data-attribute="VTTP" style="display: none;">
+                            <div class="ladiui-checkout-payment-item-header ladiui-checkout-payment-item-header-show-2 cursor-pointer"><span class="flex items-center">
+                                            <div class="flex items-center"><input type="radio" id="VTTP" value="VTTP" name="item-payment-method-radio" class="ladiui form-check-input m-0 "></div><label
+                                    class="ml-8" for="VTTP">Thanh toán qua ví ViettelPay</label>
+                                        </span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FINAN -->
+                <!-- <div class="payment-method-item" data-method="FINAN">
+                        <div class="flex-center-between head cursor-pointer ">
+                            <div class="flex-center"><img src="https://w.ladicdn.com/ladiui/icons/bank-sobanhang.svg" alt="" width="24"
+                                                          height="24">
+                                <div class="ml-16"><span>Thanh toán qua Finan ( Sổ bán hàng)</span></div>
+                            </div>
+                            <div><input type="radio" id="FINAN" class="ladiui form-check-input m-0 " name="radio-payment-method"></div>
+                        </div>
+                        <div class="payment-guide" style="display: none;"><span>Hướng dẫn thanh toán qua Finan</span></div>
+                    </div> -->
+            </div>
+        </div>
+        <div class="builder-modal-footer">
+            <button type="button" class="builder-btn-second ladiui btn btn-secondary cursor-pointer">Huỷ bỏ</button>
+            <button id="btn-finish-payment-checkout" type="button"
+                    class="builder-btn-primary ladiui btn btn-primary cursor-pointer">Tiếp tục
+            </button>
+        </div>
+    </div>
+    <div class="ladipage-payment-show-message" id="ladipage-modal-show-message-payment">
+        <div class="ladipage-payment-message-box">
+            <span>Thông báo</span>
+            <div class="ladipage-payment-message-text"></div>
+            <button class="ladipage-payment-message-close">OK</button>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    (function () {
+        if (window.isDone) {
+            return;
+        }
+
+        // function click các item khác
+        function addClickEventToListItems() {
+            document.querySelectorAll('.ladiui-checkout-payment-body-list-bank li').forEach(li => {
+                li.addEventListener('click', function () {
+                    document.querySelectorAll('.ladiui-checkout-payment-body-list-bank li').forEach(item => item.classList.remove('active'));
+
+                    this.classList.add('active');
+
+                    const paymentBodyList = this.closest('.ladiui-checkout-payment-body-list-bank');
+                    if (paymentBodyList) {
+                        paymentBodyList.style.display = 'block';
+
+                        const firstLi = paymentBodyList.querySelector('li');
+                        if (firstLi) {
+                            const isAnyActive = paymentBodyList.querySelector('li.active');
+                            if (!isAnyActive) {
+                                firstLi.classList.add('active');
+                            }
+                        }
+
+                        const activeLi = paymentBodyList.querySelector('li.active');
+
+                        if (activeLi) {
+                            selectedBankValue = activeLi.getAttribute('data-value');
+                        } else {
+                            selectedBankValue = null;
+                        }
+                    }
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // ẩn hiện các phương thức đã connect bên form checkout
+            document.querySelectorAll('.builder-modal-header .flex-center').forEach(function (element) {
+                element.style.display = 'none';
+            });
+            document.querySelectorAll('.payment-method-item').forEach(item => {
+                item.style.display = 'none';
+            });
+
+            if (window.current_select && window.current_select.code) {
+                document.querySelectorAll('.payment-method-item').forEach(item => {
+                    if (window.current_select.code == item.getAttribute('data-method')) {
+                        item.style.display = 'block';
+                    }
+
+                });
+                const matchingElement = document.querySelector(`.builder-modal-header .flex-center[data-head="${window.current_select.code}"]`);
+                if (matchingElement) {
+                    matchingElement.style.display = 'flex';
+                }
+                const methodNameSpan = matchingElement.querySelector('.header-method span');
+                if (methodNameSpan) {
+                    method_name = methodNameSpan.textContent;
+                }
+            }
+        });
+
+
+        // Click các phương thức thanh toán bên trong
+        document.querySelectorAll('.ladiui-checkout-payment-item').forEach(item => {
+            item.addEventListener('click', function () {
+                if (event.target.tagName === 'LABEL') {
+                    event.preventDefault();
+                }
+                document.querySelectorAll('.ladiui-checkout-payment-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
+                document.querySelectorAll('.ladiui-checkout-payment-item input[type="radio"]').forEach(radio => {
+                    radio.checked = false;
+                });
+
+                document.querySelectorAll('.ladiui-checkout-payment-body-list-bank').forEach(body => {
+                    body.style.display = 'none';
+                });
+                this.classList.add('selected');
+
+                const radioButton = this.querySelector('input[type="radio"]');
+                if (radioButton) {
+                    radioButton.checked = true;
+                }
+                const paymentBodyList = this.querySelector('.ladiui-checkout-payment-body-list-bank');
+                if (paymentBodyList) {
+                    paymentBodyList.style.display = 'block';
+                    const firstLi = paymentBodyList.querySelector('li');
+
+                    const isAnyActive = paymentBodyList.querySelector('li.active');
+                    if (firstLi && !isAnyActive) {
+                        firstLi.classList.add('active');
+                    }
+
+                    const activeLi = paymentBodyList.querySelector('li.active');
+                    selectedBankValue = activeLi ? activeLi.getAttribute('data-value') : null;
+                } else {
+                    selectedBankValue = null;
+                }
+                const label = this.querySelector('label');
+                if (label) {
+                    method_title = label.textContent.trim();
+                }
+                selectedRaioItemPaymentMethod = getSelectedRadioValue('input[name="item-payment-method-radio"]:checked');
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', addClickEventToListItems);
+
+        document.getElementById('btn-finish-payment-checkout').addEventListener('click', function () {
+            if (!selectedRaioItemPaymentMethod) {
+                return showModalMessagePayment("Vui lòng chọn phương thức thanh toán phù hợp");
+            }
+            var params = {
+                method_name,
+                method_title,
+                code: selectedRadioPaymentMethod || '',
+                [selectedRadioPaymentMethod.toLowerCase()]: {
+                    type: selectedRaioItemPaymentMethod || '',
+                    bank_code: selectedBankValue || ''
+                }
+            };
+            if (selectedRadioPaymentMethod == "ALE_PAY" && params.ale_pay.type == "INSTALLMENT") {
+                params = {
+                    ...params,
+                    ale_pay: {
+                        ...params.ale_pay,
+                        bank_code: selectedBankInstallmentAlePay.bankCode,
+                        payment_method: selectedPaymentMethod.paymentMethod,
+                        month: selectedPeriod.month
+                    }
+                };
+            }
+
+            window.payment_continue(params);
+        });
+
+        document.querySelectorAll('.ladiui.icon.close, .builder-btn-second').forEach(element => {
+            element.addEventListener('click', function () {
+                window.payment_cancel();
+            });
+        });
+
+        function showModalMessagePayment(message = '') {
+            let idModal = document.getElementById('ladipage-modal-show-message-payment');
+
+            if (idModal) {
+                idModal.classList.add("show");
+
+                let divContentText = document.querySelector('.ladipage-payment-message-text');
+
+                divContentText.innerText = message ? message : "Nội dung thông báo";
+            }
+        }
+
+        // Đóng modal thông báo
+
+        var elementCancel = document.querySelector('.ladipage-payment-message-close');
+
+        elementCancel.addEventListener('click', function () {
+            let idModal = document.getElementById('ladipage-modal-show-message-payment');
+
+            if (idModal) {
+                idModal.classList.remove('show');
+            }
+        });
+    })();
+</script>
+</body>
+
+</html>
+
+<!--LadiPage build time: Thu, 18 Jun 2026 07:20:22 GMT-->

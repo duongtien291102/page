@@ -1,0 +1,87 @@
+name: CI/CD Deploy Landing Page
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: page-deploy-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  DEPLOY_HOST: 103.82.26.60
+  DEPLOY_PORT: 1234
+  DEPLOY_PATH: /var/www/page
+
+jobs:
+  validate:
+    name: Validate Project & Docker Config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check required files
+        run: |
+          for f in index.html thankyou.html config.js order-handler.js Dockerfile docker-compose.yml nginx.conf; do
+            if [ ! -f "$f" ]; then
+              echo "Missing required file: $f" >&2
+              exit 1
+            fi
+          done
+
+      - name: Validate docker-compose syntax
+        run: docker compose config --quiet
+
+  deploy:
+    name: Deploy to 103.82.26.60:1234
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SERVER_HOST || secrets.SSH_HOST || '103.82.26.60' }}
+          username: ${{ secrets.SERVER_USER || secrets.SSH_USERNAME || 'root' }}
+          key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SERVER_PORT || secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            DEPLOY_PATH="${{ env.DEPLOY_PATH }}"
+            HOST_PORT="${{ env.DEPLOY_PORT }}"
+            REPO_URL="https://github.com/${{ github.repository }}.git"
+            BRANCH="${{ github.ref_name }}"
+
+            mkdir -p "$DEPLOY_PATH"
+            cd "$DEPLOY_PATH"
+
+            if [ ! -d ".git" ]; then
+              git clone --branch "$BRANCH" "$REPO_URL" .
+            else
+              git fetch origin "$BRANCH"
+              git reset --hard "origin/$BRANCH"
+            fi
+
+            export HOST_PORT="$HOST_PORT"
+            docker compose up -d --build --force-recreate
+
+            READY=false
+            for attempt in $(seq 1 12); do
+              if curl --fail --silent --show-error --max-time 5 "http://127.0.0.1:${HOST_PORT}/" > /dev/null; then
+                READY=true
+                break
+              fi
+              sleep 2
+            done
+
+            if [ "$READY" != "true" ]; then
+              echo "Landing page container did not start on port ${HOST_PORT}" >&2
+              docker compose logs --tail=50 || true
+              exit 1
+            fi
+
+            docker image prune -f
+            echo "Deployed successfully to http://103.82.26.60:${HOST_PORT}"
